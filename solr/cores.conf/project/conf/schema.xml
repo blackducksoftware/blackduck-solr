@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+
+	Index schema that defines fields for Project entity documents in 2M's lucene index.
+	
+	Change history:
+	(FLAGS: R = requires reindexing)
+	==========  =====  =====        ===========
+	MM/DD/YYYY  FLAGS  JIRA#        Description
+	==========  =====  =====        =========== 
+	12/10/2013         TWOM-4749    change version to 1.5, internal solr number that should be same as in solr's distribution
+	07/20/2013  R      TWOM-4080    Ngram/edgegram size change to Support autocomplete name for 1 char typeahead
+	06/07/2013  R      TWOM-2340    Introduced fields for fuzzy name/alias matches
+	 
+ 
+-->
+<schema name="project" version="1.5">
+
+	<types>
+		<fieldtype name="boolean" class="solr.BoolField" sortMissingLast="true" omitNorms="true" />
+		<fieldtype name="string" class="solr.StrField" sortMissingLast="true" omitNorms="true" />
+		<fieldType name="trielong" class="solr.TrieLongField" precisionStep="0" positionIncrementGap="0" />
+		<fieldType name="trieint" class="solr.TrieIntField" precisionStep="0" positionIncrementGap="0" />
+		<fieldType name="int" class="solr.TrieIntField" />
+		<fieldType name="triedate" class="solr.TrieDateField" omitNorms="true" precisionStep="0" positionIncrementGap="0"/>
+			
+	    <fieldType name="FT_autocomplete_edgegram" class="solr.TextField" positionIncrementGap="100">
+			<analyzer type="index">
+				<tokenizer class="solr.KeywordTokenizerFactory"/>
+				<filter class="solr.LowerCaseFilterFactory" />
+				<!-- 
+				Q: What is the reason behind reducing the maxGramSize (from 15 ~~ earlier value) to 4?
+
+				A: There is not much value of using both ngram and edgegram, since ngram would subsume 
+				tokens that edgegram produces. But, w.o edgegram we cannot boost prefix matches. So the 
+				idea is its enough to have edgegrams up to certain characters (4 chosen here) to just get 
+				the prefix matching gets boosted, and after that let ngram matches take over. With more 
+				than 4 character ngram matches won't be that noisy as compared to 1 character matches.
+
+				One goal was to reduce index size by not fully going to 12 characters in ngram, however 
+				initial analysis shows there is not much reduction in index size. 
+				See: http://confluence.blackducksoftware.com/display/2M/Project+Names
+				 -->
+				<filter class="solr.EdgeNGramFilterFactory" minGramSize="1" maxGramSize="4" />
+			</analyzer>
+			<analyzer type="query">
+				<tokenizer class="solr.KeywordTokenizerFactory"/>
+				<filter class="solr.LowerCaseFilterFactory" /> 
+			</analyzer>
+		</fieldType>
+	    
+	    <fieldType name="FT_autocomplete_ngram" class="solr.TextField" positionIncrementGap="100">
+	      <analyzer type="index">
+                    <tokenizer class="solr.KeywordTokenizerFactory"/>
+                    <filter class="solr.WordDelimiterFilterFactory"
+                        generateWordParts="1" splitOnCaseChange="1"
+                        generateNumberParts="1" 
+                        catenateWords="0" catenateNumbers="0" catenateAll="0"
+                        preserveOriginal="1"/>
+                    <filter class="solr.LowerCaseFilterFactory" />
+                   <filter class="solr.NGramFilterFactory" minGramSize="1" maxGramSize="12"/>
+                </analyzer>
+                <analyzer type="query">
+                    <tokenizer class="solr.KeywordTokenizerFactory"/>
+                    <filter class="solr.WordDelimiterFilterFactory"
+                        generateWordParts="1" splitOnCaseChange="1"
+                        generateNumberParts="1" 
+                        catenateWords="0" catenateNumbers="0" catenateAll="0"
+                        preserveOriginal="1"/>
+                    <filter class="solr.LowerCaseFilterFactory" /> 
+ </analyzer>
+	    </fieldType>
+		
+		<fieldType name="FT_name" class="solr.TextField" positionIncrementGap="100">
+			<analyzer>
+				<tokenizer class="solr.WhitespaceTokenizerFactory" />
+				<filter class="solr.LowerCaseFilterFactory" /> 
+			</analyzer>
+    	</fieldType>
+    	
+		<fieldType name="FT_text_lc" class="solr.TextField" positionIncrementGap="100">
+			<analyzer type="index">
+				<!--  See http://wiki.apache.org/solr/AnalyzersTokenizersTokenFilters#solr.WordDelimiterFilterFactory -->
+				<tokenizer class="solr.WhitespaceTokenizerFactory" />
+				<filter class="solr.WordDelimiterFilterFactory"
+					generateWordParts="1" generateNumberParts="1" 
+					splitOnCaseChange="0" splitOnNumerics="1"
+					stemEnglishPossessive="1"
+					catenateWords="0" catenateNumbers="0" catenateAll="0"
+					preserveOriginal="1"/>
+				<filter class="solr.LowerCaseFilterFactory" /> 
+			</analyzer>
+			<analyzer type="query">
+				<tokenizer class="solr.WhitespaceTokenizerFactory" />
+				<filter class="solr.LowerCaseFilterFactory" /> 
+			</analyzer>
+    	</fieldType>
+    	
+    	<!-- Use this to enable mathcing on tags where symbols/separators are ignored
+    	<fieldType name="FT_tags_stripped" class="solr.TextField" positionIncrementGap="100">
+			<analyzer>
+			<charFilter class="solr.PatternReplaceFilterFactory" pattern="([\s\-_\(\)#])" replacement="" replace="all"/>
+			<tokenizer class="solr.KeywordTokenizerFactory"/>
+		 	<filter class="solr.LowerCaseFilterFactory" />
+			</analyzer>
+    	</fieldType>
+    	-->
+    	
+    	<!-- 
+    	<fieldType name="FT_url_text" class="solr.TextField" positionIncrementGap="100">
+			<analyzer>
+				 <charFilter class="solr.PatternReplaceCharFilterFactory"
+                        pattern="^(http://|https://)"
+                        replacement=""
+                        replace="first"/>
+                <charFilter class="solr.PatternReplaceCharFilterFactory"
+                        pattern="(\/|\.|:)"
+                        replacement=" "
+                        replace="all"/>        
+                <tokenizer class="solr.WhitespaceTokenizerFactory"/>
+                <filter class="solr.LowerCaseFilterFactory"/>
+                <filter class="solr.LengthFilterFactory" min="2" max="50"/>
+			</analyzer>
+    	</fieldType>
+    	 -->
+    	
+    	<fieldType name="FT_string_lc_trimmed" class="solr.TextField">
+	        <analyzer>
+	            <tokenizer class="solr.KeywordTokenizerFactory"/>           
+	            <filter class="solr.LowerCaseFilterFactory" />
+	            <filter class="solr.TrimFilterFactory" />
+	        </analyzer>
+    	</fieldType> 
+
+	</types>
+
+	<fields>
+		<!-- unique document id doctype_uuid -->
+		<field name="id" type="string" indexed="true" stored="true"
+			multiValued="false" required="true" />
+			
+		<!-- unique entity uuid in 2m -->	
+		<field name="uuid" type="string" indexed="true" stored="true"
+			multiValued="false" required="true" />
+			
+		<!--  for projects tracked internally that were from KB 
+				and have local overrides -->
+		<field name="uuid_kb" type="string" indexed="true" stored="true"
+			multiValued="false" required="false" />
+		
+		<!-- internal (0), KB (1), KB_overriden (2) -->
+		<field name="ownership" type="string" indexed="true" stored="true"
+			multiValued="false" required="true" />
+			
+		<!-- project (2) -->
+		<field name="doc_type" type="int" indexed="true" stored="true"
+			multiValued="false" required="true" />			
+		
+		<field name="name" type="FT_name" indexed="true" stored="true" 
+			multiValued="false" />
+		
+		<!--  supports fuzzy name match -->
+		<field name="name_parts" type="FT_text_lc" indexed="true" stored="false" 
+			multiValued="false" />
+		<copyField source="name" dest="name_parts"/>
+		
+		<!-- fields to support name autocomplete -->
+		<field name="name_ngram" type="FT_autocomplete_ngram" indexed="true" stored="false" 
+			multiValued="false" />
+		<copyField source="name" dest="name_ngram"/>
+		<field name="name_edgegram" type="FT_autocomplete_edgegram" indexed="true" stored="false" 
+			multiValued="false" />
+		<copyField source="name" dest="name_edgegram"/>
+		
+		<field name="aliases" type="FT_name" indexed="true" stored="true" 
+			multiValued="true" />
+		<field name="aliases_parts" type="FT_text_lc" indexed="true" stored="false" 
+			multiValued="true" />
+		<copyField source="aliases" dest="aliases_parts"/>
+			
+		<field name="description" type="FT_text_lc" indexed="true" stored="true" 
+			multiValued="false" />
+			
+		<!-- excluded from V1: various URLs 
+		<field name="links" type="FT_url_text" indexed="true" stored="true"
+			multiValued="true" />
+		-->
+			
+		<field name="tags" type="FT_string_lc_trimmed" indexed="true" stored="true"
+			multiValued="true" required="false" />
+			
+		<!-- Use this to enable mathcing on tags where symbols/separators are ignored 
+		<field name="tags_stripped" type="FT_tags_stripped" indexed="true" stored="false"
+			multiValued="true" required="false" />
+		<copyField source="tags" dest="tags_stripped"/>
+		 -->
+		
+		<field name="primary_language" type="string" indexed="true" stored="true"
+			multiValued="false" required="false" />
+			
+		<!-- 
+			Stored in the index as int that ranges from 0 to 100
+			as a percentage representation of the internal_rating value.
+			
+			Note, currently backend does not allow '0' as a rating, so
+			the valid values for this would range from 1 to 100
+		 -->
+		<field name="internal_rating" type="trieint" indexed="true" stored="true"
+			multiValued="false" required="false" />
+			
+		<!-- 
+			2 - Increasing year-over-year development activity
+			1 - Stable year-over-year development activity
+			0 - Decreasing year-over-year development activity
+		 -->
+		<field name="commit_activity" type="trieint" indexed="true" stored="true"
+			multiValued="false" required="false" />
+
+		<field name="most_recent_commit" type="triedate" indexed="true" stored="true"
+			multiValued="false" required="false" />
+
+			
+		<!-- not for V1
+
+		<field name="ohloh_rating" type="int" indexed="true" stored="true"
+			multiValued="false" required="false" />
+			
+		<field name="num_watchers" type="trieint" indexed="true" stored="true"
+			multiValued="false" />
+			
+		<field name="num_projects_using" type="trieint" indexed="true" stored="true"
+			multiValued="false" required="false" />
+		
+		<field name="team_size" type="int" indexed="true" stored="true"
+			multiValued="false" required="false" />
+		
+		<field name="codebase_maturity" type="int" indexed="true" stored="true"
+			multiValued="false" required="false" />	
+			
+		<field name="num_peer_reviews" type="trieint" indexed="true" stored="true"
+			multiValued="false" />
+		 -->	
+		
+		<!-- solr metadata -->	
+		<field name="_version_" type="trielong" indexed="true" stored="true" 
+			multiValued="false"/>		
+					
+	</fields>
+
+	<uniqueKey>id</uniqueKey>
+
+</schema>

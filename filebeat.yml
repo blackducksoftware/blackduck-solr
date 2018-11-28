@@ -1,0 +1,23 @@
+## Hub Solr Filebeat Configuration
+
+filebeat.prospectors:
+- input_type: log
+  paths:
+    - /opt/blackduck/hub/solr/logs/*
+  fields:
+    application: hub-solr
+  fields_under_root: true
+  
+- input_type: log
+  paths:
+    - /opt/solr/server/logs/*
+  fields:
+    application: hub-solr
+    category: "server-log"
+  fields_under_root: true
+  
+output.logstash:
+  hosts: ["${HUB_LOGSTASH_HOST:logstash}:${HUB_LOGSTASH_PORT:5044}"]
+  index: filebeat
+
+logging.level: info
